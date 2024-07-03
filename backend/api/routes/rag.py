@@ -1,8 +1,8 @@
 from flask import Blueprint, request, jsonify
-from werkzeug.utils import secure_filename
 from flask_jwt_extended import jwt_required
 from flask_cors import CORS, cross_origin
 from api.services import retriever_service, generator_service, file_service
+from werkzeug.utils import secure_filename
 
 bp = Blueprint('rag', __name__)
 CORS(bp)
@@ -25,9 +25,8 @@ def upload():
     else:
         return jsonify({"error": "Invalid file type"}), 400
 
-
 @bp.route('/generate', methods=['POST'])
-@jwt_required()
+# @jwt_required()
 @cross_origin(origin='*')
 def generate():
     data = request.get_json()
@@ -35,9 +34,6 @@ def generate():
     if not question:
         return jsonify({"error": "Question not provided"}), 400
 
-    context = file_service.get_file_content()
-    if context is None:
-        return jsonify({"error": "No file content available"}), 400
-
-    response = generator_service.generate(question, context)
-    return jsonify(response), 200
+    retriever = retriever_service.create_retriever()
+    response = generator_service.generate(question, retriever)
+    return jsonify({"response": response}), 200

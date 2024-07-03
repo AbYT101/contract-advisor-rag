@@ -13,4 +13,9 @@ python-dotenv
 flask_cors
 torch>=2.1
 Flask-Migrate
-
+langchain 
+openai 
+weaviate-client 
+chromadb
+langchain-community
+cryptography==41.0.7
