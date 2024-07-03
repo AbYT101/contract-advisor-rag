@@ -1,6 +1,8 @@
 # Local files
 backend/venv/
 .idea/
+backend/3.35.0
+backend/data/contracts
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
