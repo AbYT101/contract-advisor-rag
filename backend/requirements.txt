@@ -1,3 +1,21 @@
 
 Flask
 python-docx
+pandas
+requests
+Flask-SQLAlchemy
+Flask-JWT-Extended
+Flask-Bcrypt
+bcrypt==4.1.1
+psycopg2-binary
+psycopg2
+python-dotenv
+flask_cors
+torch>=2.1
+Flask-Migrate
+langchain 
+openai 
+weaviate-client 
+chromadb
+langchain-community
+cryptography==41.0.7
