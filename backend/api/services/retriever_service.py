@@ -1,15 +1,19 @@
 import os
+import logging
+from dotenv import load_dotenv
 from langchain.document_loaders import TextLoader
 from langchain.embeddings import OpenAIEmbeddings
 from langchain.vectorstores import Chroma
 from langchain.text_splitter import RecursiveCharacterTextSplitter
-from dotenv import load_dotenv, find_dotenv
-import logging
 
-load_dotenv(find_dotenv())
+load_dotenv()
 
 DATA_DIR = 'data/texts'
 KNOWLEDGE_FILE = 'knowledge.txt'
+OPENAI_API_KEY = os.getenv('OPENAI_API_KEY')
+
+# Set up logging
+logging.basicConfig(level=logging.INFO)
 
 def create_retriever():
     try:
@@ -26,10 +30,6 @@ def create_retriever():
 
         # Extract text from each Document object and concatenate into a single string
         raw_text = " ".join([doc.page_content for doc in documents])
-
-        # Ensure the raw_text is now a string
-        if not isinstance(raw_text, str):
-            raise TypeError(f"Expected a string after concatenation, but got {type(raw_text)}")
 
         # Split the text into manageable chunks
         text_splitter = RecursiveCharacterTextSplitter(
@@ -49,7 +49,7 @@ def create_retriever():
         db = Chroma.from_texts(docs, embeddings)
 
         # Create a retriever
-        retriever = db.as_retriever(search_type="mmr")
+        retriever = db.as_retriever()
 
         logging.info("Retriever created successfully")
 

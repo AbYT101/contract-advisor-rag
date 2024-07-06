@@ -2,7 +2,7 @@ import os
 import sys
 from dotenv import load_dotenv
 from ragas import evaluate
-from ragas.metrics import faithfulness, answer_relevancy, context_recall, context_precision
+from ragas.metrics import faithfulness, answer_relevancy, context_recall, context_precision, answer_correctness
 from datasets import Dataset
 
 # Assuming these functions are defined elsewhere and imported correctly
@@ -52,14 +52,14 @@ def main():
     contexts = []
 
     # Create retriever
-    retriever = bm25_retriever.create_retriever()
+    retriever = retriever_service.create_retriever()
 
     # Inference
     for query in questions:
         generated_prompts = generator_service.generate(query, retriever)
-        context = retriever.invoke(query)
+        result = retriever.invoke(query)
         answers.append(generated_prompts)
-        contexts.append([doc.page_content for doc in context])
+        contexts.append([doc.page_content for doc in result])
 
     # Prepare data for evaluation
     data = {
@@ -80,6 +80,7 @@ def main():
             context_recall,
             faithfulness,
             answer_relevancy,
+            answer_correctness
         ],
     )
     print("The evaluation result is", result)
