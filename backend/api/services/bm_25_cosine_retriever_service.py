@@ -1,15 +1,42 @@
 import os
+import logging
+from typing import List
+from collections import Counter
 from langchain.document_loaders import TextLoader
 from langchain.embeddings import OpenAIEmbeddings
 from langchain.vectorstores import Chroma
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from dotenv import load_dotenv, find_dotenv
-import logging
+from rank_bm25 import BM25Okapi  # You may need to install the rank_bm25 package
 
 load_dotenv(find_dotenv())
 
 DATA_DIR = 'data/texts'
 KNOWLEDGE_FILE = 'knowledge.txt'
+
+class CombinedRetriever:
+    def __init__(self, bm25_retriever, cosine_retriever, docs):
+        self.bm25_retriever = bm25_retriever
+        self.cosine_retriever = cosine_retriever
+        self.docs = docs
+
+    def retrieve(self, query: str, top_k: int = 10) -> List[str]:
+        # Tokenize the query for BM25
+        tokenized_query = query.split()
+
+        # Get BM25 scores
+        top_k_bm25_indices = self.bm25_retriever.get_top_n(tokenized_query, self.docs, n=top_k)
+
+        # Get cosine similarity scores
+        cosine_results = self.cosine_retriever.retrieve(query)
+        cosine_indices = [self.docs.index(doc) for doc in cosine_results]
+
+        # Combine the results (simple voting)
+        combined_results = top_k_bm25_indices + cosine_indices
+        combined_counter = Counter(combined_results)
+        combined_top_k = [self.docs[idx] for idx, _ in combined_counter.most_common(top_k)]
+
+        return combined_top_k
 
 def create_retriever():
     try:
@@ -44,25 +71,22 @@ def create_retriever():
 
         # Create embeddings for the text chunks
         embeddings = OpenAIEmbeddings()
+        embedded_docs = embeddings.embed_documents(docs)
 
-        # Using Chroma as the vector store
-        db = Chroma.from_texts(docs, embeddings)
+        # Using Chroma as the vector store for cosine similarity
+        db_cosine = Chroma.from_texts(docs, embeddings)
+        retriever_cosine = db_cosine.as_retriever(search_type="mmr")
 
-        # Create a retriever
-        retriever = db.as_retriever(search_type="mmr")
+        # Create BM25 retriever
+        tokenized_docs = [doc.split() for doc in docs]
+        bm25 = BM25Okapi(tokenized_docs)
 
-        logging.info("Retriever created successfully")
+        logging.info("Retrievers created successfully")
 
-        return retriever
-
-    except FileNotFoundError as fnf_error:
-        logging.error(f"File not found: {fnf_error}")
-        raise  # Re-raise the exception to propagate it
-
-    except TypeError as type_error:
-        logging.error(f"Type error: {type_error}")
-        raise  # Re-raise the exception to propagate it
+        combined_retriever = CombinedRetriever(bm25, retriever_cosine, docs)
+        return combined_retriever
 
     except Exception as e:
         logging.error(f"Error creating retriever: {e}")
-        raise  # Re-raise the exception to propagate it
+        raise
+

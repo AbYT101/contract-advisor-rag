@@ -1,7 +1,7 @@
 from flask import Blueprint, request, jsonify
 from flask_jwt_extended import jwt_required
 from flask_cors import CORS, cross_origin
-from api.services import retriever_service, generator_service, file_service
+from api.services import retriever_service, generator_service, file_service, evaluation_service
 from werkzeug.utils import secure_filename
 
 bp = Blueprint('rag', __name__)
@@ -36,4 +36,17 @@ def generate():
 
     retriever = retriever_service.create_retriever()
     response = generator_service.generate(question, retriever)
+    return jsonify({"response": response}), 200
+
+
+@bp.route('/evaluate', methods=['POST'])
+# @jwt_required()
+@cross_origin(origin='*')
+def evaluate():
+    data = request.get_json()
+    # question = data.get('question')
+    # if not question:
+    #     return jsonify({"error": "Question not provided"}), 400
+
+    response = evaluation_service.main()
     return jsonify({"response": response}), 200
