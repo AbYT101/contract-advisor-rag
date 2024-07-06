@@ -1,19 +1,17 @@
 import os
 import logging
-from dotenv import load_dotenv
 from langchain.document_loaders import TextLoader
-from langchain.embeddings import OpenAIEmbeddings
-from langchain.vectorstores import Chroma
 from langchain.text_splitter import RecursiveCharacterTextSplitter
+from langchain.vectorstores import Chroma
+from langchain.embeddings import OpenAIEmbeddings
+from langchain.retrievers import BM25Retriever
+from langchain_core.documents import Document
+from dotenv import load_dotenv, find_dotenv
 
-load_dotenv()
+load_dotenv(find_dotenv())
 
 DATA_DIR = 'data/texts'
 KNOWLEDGE_FILE = 'knowledge.txt'
-OPENAI_API_KEY = os.getenv('OPENAI_API_KEY')
-
-# Set up logging
-logging.basicConfig(level=logging.INFO)
 
 def create_retriever():
     try:
@@ -31,38 +29,37 @@ def create_retriever():
         # Extract text from each Document object and concatenate into a single string
         raw_text = " ".join([doc.page_content for doc in documents])
 
+        # Ensure the raw_text is now a string
+        if not isinstance(raw_text, str):
+            raise TypeError(f"Expected a string after concatenation, but got {type(raw_text)}")
+
         # Split the text into manageable chunks
         text_splitter = RecursiveCharacterTextSplitter(
             chunk_size=1000,  # Adjust based on the token limit
             chunk_overlap=50
         )
-        docs = text_splitter.split_text(raw_text)
+        chunks = text_splitter.split_text(raw_text)
 
-        # Ensure the docs are a list of strings
-        if not all(isinstance(doc, str) for doc in docs):
+        # Ensure the chunks are a list of strings
+        if not all(isinstance(chunk, str) for chunk in chunks):
             raise TypeError("Expected all chunks to be strings")
 
-        # Create embeddings for the text chunks
-        embeddings = OpenAIEmbeddings()
+        # Create Document objects from the chunks with empty metadata
+        docs = [Document(page_content=chunk, metadata={}) for chunk in chunks]
 
-        # Using Chroma as the vector store
-        db = Chroma.from_texts(docs, embeddings)
-
-        # Create a retriever
-        retriever = db.as_retriever()
+        # Create a BM25 retriever
+        bm25_retriever = BM25Retriever(docs=docs)
 
         logging.info("Retriever created successfully")
 
-        return retriever
-
-    except FileNotFoundError as fnf_error:
-        logging.error(f"File not found: {fnf_error}")
-        raise  # Re-raise the exception to propagate it
-
-    except TypeError as type_error:
-        logging.error(f"Type error: {type_error}")
-        raise  # Re-raise the exception to propagate it
+        return bm25_retriever
 
     except Exception as e:
         logging.error(f"Error creating retriever: {e}")
-        raise  # Re-raise the exception to propagate it
+        raise
+
+    except Exception as e:
+        logging.error(f"Error creating retriever: {e}")
+        raise
+
+
